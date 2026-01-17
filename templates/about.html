@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Інформація про мене</title>
+    <style>
+        body { font-family: Arial; background-color: #A4C639; text-align: center; padding-top: 50px; }
+        .card { background: black; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: inline-block; }
+        h1 { color: #b6b4b4; }
+        p { color: bisque;}
+        h3 {color: aquamarine;}
+        ul {color: beige;}
+    </style>
+</head>
+<body>
+    <div class="card">
+    <h1>Візитна картка</h1>
+    <p>ПІБ: {{ name }}</p> <p>Тел: {{ phone }}</p> <a href="/">На головну</a>
+    <h3>Мої навички:</h3>
+    <form method="POST">
+    <input type="text" name="skill_name" placeholder="Введіть нову навичку" required>
+    <button type="submit">Додати</button>
+</form>
+   <ul style="list-style: none; padding: 0;"> {% for skill in skills_list %}
+    <li style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 5px;">
+        <span>{{ skill }}</span>
+        
+        <form method="POST" style="margin: 0;">
+            <input type="hidden" name="delete_skill" value="{{ skill }}">
+            <button type="submit" style="background: #ff4d4d; color: white; border: none; border-radius: 3px; cursor: pointer;">x</button>
+        </form>
+    </li>
+    {% endfor %}
+</ul>
+    </div>
+</body>
+</html>
