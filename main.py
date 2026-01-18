@@ -2,6 +2,8 @@ import sqlite3
 from flask import Flask, render_template, request
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import session, redirect, url_for
+from flask import flash # Додай це до імпортів
+
 
 app = Flask(__name__)
 app.secret_key = 'super-secret-key-donot-share' # У реальних проєктах тут складний набір символів
@@ -50,9 +52,10 @@ def login():
         
         if user and check_password_hash(user[0], password):
             session['is_admin'] = True  # Помічаємо в сесії, що користувач - адмін
+            flash('Ви успішно увійшли!', 'success') # Повідомлення про успіх
             return redirect(url_for('about'))
         else:
-            return "Невірний логін або пароль!"
+            flash('Невірний логін або пароль!', 'error') # Повідомлення про помилку
             
     return render_template('login.html')
 

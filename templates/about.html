@@ -4,7 +4,7 @@
     <title>Інформація про мене</title>
     <style>
         body { font-family: Arial; background-color: #A4C639; text-align: center; padding-top: 50px; }
-        .card { background: black; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: inline-block; }
+        .card { background: black; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: inline-block; word-wrap: break-word; }
         h1 { color: #b6b4b4; }
         p { color: bisque;}
         h3 {color: aquamarine;}
@@ -13,6 +13,16 @@
 </head>
 <body>
     <div class="card">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div style="padding: 10px; margin-bottom: 20px; border-radius: 5px; 
+                            background-color: {{ 'green' if category == 'success' else 'red' }}; color: white;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}   
     <h1>Візитна картка</h1>
     <p>ПІБ: {{ name }}</p> <p>Тел: {{ phone }}</p> <a href="/">На головну</a>
     <h3>Мої навички:</h3>
