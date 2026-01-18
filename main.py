@@ -1,29 +1,65 @@
 import sqlite3
 from flask import Flask, render_template, request
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask import session, redirect, url_for
 
 app = Flask(__name__)
+app.secret_key = 'super-secret-key-donot-share' # У реальних проєктах тут складний набір символів
 
 
 def init_db():
-    # Підключаємося до файлу бази даних (він створиться сам)
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
+    # Таблиця навичок (вже є)
+    cursor.execute('CREATE TABLE IF NOT EXISTS skills (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)')
     
-    # Створюємо таблицю skills, якщо її не існує
-    # Столбець id - унікальний номер, name - назва навички
+    # НОВА ТАБЛИЦЯ: Користувачі
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS skills (
+        CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
         )
     ''')
     
+    # Створимо тестового адміна, якщо його ще немає
+    # Пароль "1234" перетвориться на довгий нечитабельний код (хеш)
+    hashed_password = generate_password_hash('1234')
+    try:
+        cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', ('admin', hashed_password))
+    except sqlite3.IntegrityError:
+        pass # Адмін уже існує
+        
     conn.commit()
     conn.close()
 
 # Викликаємо ініціалізацію при запуску
 init_db()
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT password FROM users WHERE username = ?", (username,))
+        user = cursor.fetchone()
+        conn.close()
+        
+        if user and check_password_hash(user[0], password):
+            session['is_admin'] = True  # Помічаємо в сесії, що користувач - адмін
+            return redirect(url_for('about'))
+        else:
+            return "Невірний логін або пароль!"
+            
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('is_admin', None) # Видаляємо статус адміна
+    return redirect(url_for('about'))
 
 # Функція для завантаження даних із файлу
 def load_skills():

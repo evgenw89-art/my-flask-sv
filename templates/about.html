@@ -16,18 +16,26 @@
     <h1>Візитна картка</h1>
     <p>ПІБ: {{ name }}</p> <p>Тел: {{ phone }}</p> <a href="/">На головну</a>
     <h3>Мої навички:</h3>
+    {% if session.get('is_admin') %}
     <form method="POST">
-    <input type="text" name="skill_name" placeholder="Введіть нову навичку" required>
-    <button type="submit">Додати</button>
-</form>
-   <ul style="list-style: none; padding: 0;"> {% for skill in skills_list %}
-    <li style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 5px;">
-        <span>{{ skill }}</span>
-        
-        <form method="POST" style="margin: 0;">
+        <input type="text" name="skill_name" placeholder="Нова навичка">
+        <button type="submit">Додати</button>
+    </form>
+    <p><a href="{{ url_for('logout') }}" style="color: gray;">Вийти</a></p>
+{% else %}
+    <a href="{{ url_for('login') }}" style="color: gray;">Увійти як адмін</a>
+{% endif %}
+
+<ul>
+    {% for skill in skills_list %}
+    <li>
+        {{ skill }}
+        {% if session.get('is_admin') %}
+        <form method="POST" style="display:inline;">
             <input type="hidden" name="delete_skill" value="{{ skill }}">
-            <button type="submit" style="background: #ff4d4d; color: white; border: none; border-radius: 3px; cursor: pointer;">x</button>
+            <button type="submit">x</button>
         </form>
+        {% endif %}
     </li>
     {% endfor %}
 </ul>
