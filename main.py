@@ -1,4 +1,8 @@
-import sqlite3
+import os
+import psycopg2 # Замість sqlite3
+import threading
+
+from tgbot import bot # Імпортуємо об'єкт бота з твого файлу
 from flask import Flask, render_template, request
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import session, redirect, url_for
@@ -7,7 +11,27 @@ from flask import flash # Додай це до імпортів
 
 app = Flask(__name__)
 app.secret_key = 'super-secret-key-donot-share' # У реальних проєктах тут складний набір символів
+# Отримуємо URL бази даних з налаштувань сервера (або використовуємо локальну для тесту)
+DATABASE_URL = os.environ.get('DATABASE_URL', 'тут_твій_external_url_з_render')
 
+def run_bot():
+    print("Запускаю Telegram бота...")
+    bot.infinity_polling(none_stop=True)
+
+if __name__ == "__main__":
+    # Створюємо окремий потік для бота
+    bot_thread = threading.Thread(target=run_bot)
+    bot_thread.daemon = True # Бот закриється, якщо зупиниться основна програма
+    bot_thread.start()
+
+    # Запускаємо Flask сайт
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
+
+def get_db_connection():
+    # PostgreSQL використовує інший метод підключення
+    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+    return conn
 
 def init_db():
     conn = sqlite3.connect('database.db')
@@ -94,6 +118,10 @@ def delete_skill_db(skill_name):
     cursor.execute("DELETE FROM skills WHERE name = ?", (skill_name,))
     conn.commit()
     conn.close()    
+
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 @app.route('/about', methods=['GET', 'POST'])
 def about():

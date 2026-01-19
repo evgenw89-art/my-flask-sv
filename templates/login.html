@@ -1,19 +1,29 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Інформація про мене</title>
+    <title>Вхід</title>
     <style>
-        body { font-family: Arial; background-color: #A4C639; text-align: center; padding-top: 50px; }
-        .card { background: black; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: inline-block; }
-        h1 { color: #b6b4b4; }
-        p { color: bisque;}
-        h3 {color: aquamarine;}
-        ul {color: beige;}
+        body { font-family: Arial; background-color: #A4C639; text-align: center; }
+        .card { background: black; padding: 30px; border-radius: 10px; width: 300px; margin: 100px auto; color: white; }
+        input { width: 90%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; }
+        button { width: 100%; padding: 10px; background: white; border: none; cursor: pointer; border-radius: 5px; }
     </style>
 </head>
 <body>
     <div class="card">
-    <form method="POST">
-        <input type="text" name="username" placeholder="Ваш логін">
-        <p><input type="password" name="password" placeholder="Пароль"></p>
-        <button type="submit">Увійти</button>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div style="color: #ff4d4d; margin-bottom: 10px;">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <input type="text" name="username" placeholder="Логін" required>
+            <input type="password" name="password" placeholder="Пароль" required>
+            <button type="submit">Увійти</button>
+        </form>
+    </div>
+</body>
+</html>

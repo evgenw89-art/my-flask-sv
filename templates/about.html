@@ -1,54 +1,88 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Інформація про мене</title>
+    <title>Візитна картка</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial; background-color: #A4C639; text-align: center; padding-top: 50px; }
-        .card { background: black; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: inline-block; word-wrap: break-word; }
+        body { font-family: Arial; background-color: #A4C639; text-align: center; }
+        .card { 
+            background: black; padding: 20px; border-radius: 10px; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2); 
+            max-width: 500px; margin: 50px auto; color: white;
+        }
         h1 { color: #b6b4b4; }
-        p { color: bisque;}
-        h3 {color: aquamarine;}
-        ul {color: beige;}
+        a { color: blue; text-decoration: none; }
+        ul { list-style: none; padding: 0; }
+        
+        /* Стиль для елемента списку */
+        .skill-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.1);
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        /* Текст навички з автоматичним перенесенням */
+        .skill-text {
+            word-break: break-all; /* Розрізає довгі слова */
+            flex-grow: 1;
+            text-align: left;
+            padding-right: 10px;
+            color: beige;
+        }
+
+        .btn-delete {
+            background: #ff4d4d; color: white; border: none; 
+            cursor: pointer; padding: 5px 10px; border-radius: 3px;
+        }
     </style>
 </head>
 <body>
     <div class="card">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
             {% for category, message in messages %}
-                <div style="padding: 10px; margin-bottom: 20px; border-radius: 5px; 
-                            background-color: {{ 'green' if category == 'success' else 'red' }}; color: white;">
-                    {{ message }}
-                </div>
+              <div style="padding: 10px; margin-bottom: 20px; border-radius: 5px; background-color: {{ 'green' if category == 'success' else 'red' }};">
+                {{ message }}
+              </div>
             {% endfor %}
-        {% endif %}
-    {% endwith %}   
-    <h1>Візитна картка</h1>
-    <p>ПІБ: {{ name }}</p> <p>Тел: {{ phone }}</p> <a href="/">На головну</a>
-    <h3>Мої навички:</h3>
-    {% if session.get('is_admin') %}
-    <form method="POST">
-        <input type="text" name="skill_name" placeholder="Нова навичка">
-        <button type="submit">Додати</button>
-    </form>
-    <p><a href="{{ url_for('logout') }}" style="color: gray;">Вийти</a></p>
-{% else %}
-    <a href="{{ url_for('login') }}" style="color: gray;">Увійти як адмін</a>
-{% endif %}
+          {% endif %}
+        {% endwith %}
 
-<ul>
-    {% for skill in skills_list %}
-    <li>
-        {{ skill }}
+        <h1>Візитна картка</h1>
+        <p>ПІБ: Євген</p>
+        <p>Тел: 0960795995</p>
+        <a href="{{ url_for('index') }}">На головну</a>
+
+        <h3 style="color: aquamarine;">Мої навички:</h3>
+
         {% if session.get('is_admin') %}
-        <form method="POST" style="display:inline;">
-            <input type="hidden" name="delete_skill" value="{{ skill }}">
-            <button type="submit">x</button>
-        </form>
+            <form method="POST" style="margin-bottom: 20px;">
+                <input type="text" name="skill_name" placeholder="Нова навичка" required>
+                <button type="submit">Додати</button>
+            </form>
+            <a href="{{ url_for('logout') }}" style="color: gray; font-size: 0.8rem;">Вийти</a>
+        {% else %}
+            <a href="{{ url_for('login') }}" style="color: gray; font-size: 0.8rem;">Увійти як адмін</a>
         {% endif %}
-    </li>
-    {% endfor %}
-</ul>
+
+        <ul>
+            {% for skill in skills_list %}
+            <li class="skill-item">
+                <span class="skill-text">{{ skill }}</span>
+                
+                {% if session.get('is_admin') %}
+                <form method="POST" style="margin: 0;">
+                    <input type="hidden" name="delete_skill" value="{{ skill }}">
+                    <button type="submit" class="btn-delete">x</button>
+                </form>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
     </div>
 </body>
 </html>
