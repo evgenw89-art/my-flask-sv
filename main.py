@@ -6,25 +6,30 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from tgbot import bot 
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'super-secret-key-123')
+app.secret_key = os.environ.get('SECRET_KEY', 'default_secret_123')
+
+# Отримуємо URL бази з Render
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 def get_db_connection():
+    # Використовуємо PostgreSQL (як у боті)
     return psycopg2.connect(DATABASE_URL, sslmode='require')
 
 def init_db():
+    """Створюємо таблиці в PostgreSQL"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute('CREATE TABLE IF NOT EXISTS skills (id SERIAL PRIMARY KEY, name TEXT NOT NULL)')
         cursor.execute('CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL)')
+        # Адмін за замовчуванням (пароль 1234)
         hashed_pw = generate_password_hash('1234')
         cursor.execute('INSERT INTO users (username, password) VALUES (%s, %s) ON CONFLICT (username) DO NOTHING', ('admin', hashed_pw))
         conn.commit()
         cursor.close()
         conn.close()
     except Exception as e:
-        print(f"Помилка БД: {e}")
+        print(f"Помилка ініціалізації БД: {e}")
 
 @app.route('/')
 def index():
@@ -34,29 +39,39 @@ def index():
 def about():
     conn = get_db_connection()
     cursor = conn.cursor()
+    
     if request.method == 'POST' and session.get('is_admin'):
         new_skill = request.form.get('skill_name')
         if new_skill:
             cursor.execute("INSERT INTO skills (name) VALUES (%s)", (new_skill,))
             conn.commit()
+            
     cursor.execute("SELECT name FROM skills")
     skills = [row[0] for row in cursor.fetchall()]
     cursor.close()
     conn.close()
+    
     return render_template('about.html', name="Євген", phone="0960795995", skills_list=skills)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if request.form.get('username') == 'admin' and request.form.get('password') == '1234':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        if username == 'admin' and password == '1234': # Для спрощення
             session['is_admin'] = True
             return redirect(url_for('about'))
     return render_template('login.html')
 
+@app.route('/logout')
+def logout():
+    session.pop('is_admin', None)
+    return redirect(url_for('index'))
+
 def run_bot():
     bot.infinity_polling(none_stop=True)
 
-# Запуск всього разом
+# Запуск бази та бота перед стартом Flask
 init_db()
 threading.Thread(target=run_bot, daemon=True).start()
 
