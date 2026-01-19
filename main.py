@@ -1,123 +1,30 @@
 import os
-import psycopg2 # Замість sqlite3
+import psycopg2
 import threading
-
-from tgbot import bot # Імпортуємо об'єкт бота з твого файлу
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, session, redirect, url_for, flash
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import session, redirect, url_for
-from flask import flash # Додай це до імпортів
-
+from tgbot import bot 
 
 app = Flask(__name__)
-app.secret_key = 'super-secret-key-donot-share' # У реальних проєктах тут складний набір символів
-# Отримуємо URL бази даних з налаштувань сервера (або використовуємо локальну для тесту)
-DATABASE_URL = os.environ.get('DATABASE_URL', 'тут_твій_external_url_з_render')
-
-def run_bot():
-    print("Запускаю Telegram бота...")
-    bot.infinity_polling(none_stop=True)
-
-if __name__ == "__main__":
-    # Створюємо окремий потік для бота
-    bot_thread = threading.Thread(target=run_bot)
-    bot_thread.daemon = True # Бот закриється, якщо зупиниться основна програма
-    bot_thread.start()
-
-    # Запускаємо Flask сайт
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+app.secret_key = os.environ.get('SECRET_KEY', 'super-secret-key-123')
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
 def get_db_connection():
-    # PostgreSQL використовує інший метод підключення
-    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-    return conn
+    return psycopg2.connect(DATABASE_URL, sslmode='require')
 
 def init_db():
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    # Таблиця навичок (вже є)
-    cursor.execute('CREATE TABLE IF NOT EXISTS skills (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)')
-    
-    # НОВА ТАБЛИЦЯ: Користувачі
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
-        )
-    ''')
-    
-    # Створимо тестового адміна, якщо його ще немає
-    # Пароль "1234" перетвориться на довгий нечитабельний код (хеш)
-    hashed_password = generate_password_hash('1234')
     try:
-        cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', ('admin', hashed_password))
-    except sqlite3.IntegrityError:
-        pass # Адмін уже існує
-        
-    conn.commit()
-    conn.close()
-
-# Викликаємо ініціалізацію при запуску
-init_db()
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        conn = sqlite3.connect('database.db')
+        conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT password FROM users WHERE username = ?", (username,))
-        user = cursor.fetchone()
+        cursor.execute('CREATE TABLE IF NOT EXISTS skills (id SERIAL PRIMARY KEY, name TEXT NOT NULL)')
+        cursor.execute('CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL)')
+        hashed_pw = generate_password_hash('1234')
+        cursor.execute('INSERT INTO users (username, password) VALUES (%s, %s) ON CONFLICT (username) DO NOTHING', ('admin', hashed_pw))
+        conn.commit()
+        cursor.close()
         conn.close()
-        
-        if user and check_password_hash(user[0], password):
-            session['is_admin'] = True  # Помічаємо в сесії, що користувач - адмін
-            flash('Ви успішно увійшли!', 'success') # Повідомлення про успіх
-            return redirect(url_for('about'))
-        else:
-            flash('Невірний логін або пароль!', 'error') # Повідомлення про помилку
-            
-    return render_template('login.html')
-
-@app.route('/logout')
-def logout():
-    session.pop('is_admin', None) # Видаляємо статус адміна
-    return redirect(url_for('about'))
-
-# Функція для завантаження даних із файлу
-def load_skills():
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    
-    # ТУТ ЗАВДАННЯ: напиши запит, щоб вибрати всі імена (name) з таблиці skills
-    cursor.execute("SELECT name FROM skills")
-    
-    # Отримуємо всі результати. fetchall() повертає список кортежів [('Python',), ('Flask',)]
-    rows = cursor.fetchall()
-    conn.close()
-    
-    # Перетворюємо список кортежів у звичайний список рядків
-    return [row[0] for row in rows]
-
-# Функція для збереження даних у файл
-def add_skill_db(skill_name):
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    # ТУТ ЗАВДАННЯ: напиши запит INSERT для додавання skill_name
-    cursor.execute("INSERT INTO skills (name) VALUES (?)", (skill_name,))
-    conn.commit()
-    conn.close()
-
-def delete_skill_db(skill_name):
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM skills WHERE name = ?", (skill_name,))
-    conn.commit()
-    conn.close()    
+    except Exception as e:
+        print(f"Помилка БД: {e}")
 
 @app.route('/')
 def index():
@@ -125,23 +32,34 @@ def index():
 
 @app.route('/about', methods=['GET', 'POST'])
 def about():
-    if request.method == 'POST':
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    if request.method == 'POST' and session.get('is_admin'):
         new_skill = request.form.get('skill_name')
-        skill_to_delete = request.form.get('delete_skill')
-
         if new_skill:
-            add_skill_db(new_skill)
-            
-        elif skill_to_delete:
-            delete_skill_db(skill_to_delete)
+            cursor.execute("INSERT INTO skills (name) VALUES (%s)", (new_skill,))
+            conn.commit()
+    cursor.execute("SELECT name FROM skills")
+    skills = [row[0] for row in cursor.fetchall()]
+    cursor.close()
+    conn.close()
+    return render_template('about.html', name="Євген", phone="0960795995", skills_list=skills)
 
-    skills = load_skills()
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        if request.form.get('username') == 'admin' and request.form.get('password') == '1234':
+            session['is_admin'] = True
+            return redirect(url_for('about'))
+    return render_template('login.html')
 
-    return render_template('about.html',
-                           name="Євген",
-                           phone="0960795995",
-                           skills_list=skills)              
-            
-    
+def run_bot():
+    bot.infinity_polling(none_stop=True)
+
+# Запуск всього разом
+init_db()
+threading.Thread(target=run_bot, daemon=True).start()
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
