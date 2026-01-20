@@ -1,88 +1,90 @@
 <!DOCTYPE html>
-<html>
+<html lang="uk">
 <head>
-    <title>Візитна картка</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Про мене | Євген</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
-        body { font-family: Arial; background-color: #A4C639; text-align: center; }
-        .card { 
-            background: black; padding: 20px; border-radius: 10px; 
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2); 
-            max-width: 500px; margin: 50px auto; color: white;
-        }
-        h1 { color: #b6b4b4; }
-        a { color: blue; text-decoration: none; }
-        ul { list-style: none; padding: 0; }
-        
-        /* Стиль для елемента списку */
-        .skill-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(255,255,255,0.1);
-            margin: 10px 0;
-            padding: 10px;
-            border-radius: 5px;
-        }
-
-        /* Текст навички з автоматичним перенесенням */
-        .skill-text {
-            word-break: break-all; /* Розрізає довгі слова */
-            flex-grow: 1;
-            text-align: left;
-            padding-right: 10px;
-            color: beige;
-        }
-
-        .btn-delete {
-            background: #ff4d4d; color: white; border: none; 
-            cursor: pointer; padding: 5px 10px; border-radius: 3px;
-        }
+        body { background: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .hero-section { background: linear-gradient(135deg, #212529 0%, #343a40 100%); color: white; padding: 60px 0; border-bottom: 5px solid #A4C639; }
+        .skill-badge { background: #e9ecef; border-left: 4px solid #A4C639; transition: 0.3s; }
+        .skill-badge:hover { transform: translateX(5px); background: #dee2e6; }
+        .card { border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .btn-add { background-color: #A4C639; border: none; color: black; font-weight: bold; }
+        .btn-add:hover { background-color: #8da830; }
     </style>
 </head>
 <body>
-    <div class="card">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div style="padding: 10px; margin-bottom: 20px; border-radius: 5px; background-color: {{ 'green' if category == 'success' else 'red' }};">
-                {{ message }}
-              </div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
 
-        <h1>Візитна картка</h1>
-        <p>ПІБ: Євген</p>
-        <p>Тел: 0960795995</p>
-        <a href="{{ url_for('index') }}">На головну</a>
+    <section class="hero-section text-center">
+        <div class="container">
+            <h1 class="display-4 fw-bold">Євген</h1>
+            <p class="lead">Розробник | Telegram Bot Expert</p>
+            <div class="mt-3">
+                <a href="tel:{{ phone }}" class="btn btn-outline-light me-2"><i class="bi bi-telephone"></i> {{ phone }}</a>
+                <a href="{{ url_for('index') }}" class="btn btn-light"><i class="bi bi-house"></i> На головну</a>
+            </div>
+        </div>
+    </section>
 
-        <h3 style="color: aquamarine;">Мої навички:</h3>
-
-        {% if session.get('is_admin') %}
-            <form method="POST" style="margin-bottom: 20px;">
-                <input type="text" name="skill_name" placeholder="Нова навичка" required>
-                <button type="submit">Додати</button>
-            </form>
-            <a href="{{ url_for('logout') }}" style="color: gray; font-size: 0.8rem;">Вийти</a>
-        {% else %}
-            <a href="{{ url_for('login') }}" style="color: gray; font-size: 0.8rem;">Увійти як адмін</a>
-        {% endif %}
-
-        <ul>
-            {% for skill in skills_list %}
-            <li class="skill-item">
-                <span class="skill-text">{{ skill }}</span>
+    <div class="container my-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
                 
-                {% if session.get('is_admin') %}
-                <form method="POST" style="margin: 0;">
-                    <input type="hidden" name="delete_skill" value="{{ skill }}">
-                    <button type="submit" class="btn-delete">x</button>
-                </form>
-                {% endif %}
-            </li>
-            {% endfor %}
-        </ul>
+                {% with messages = get_flashed_messages() %}
+                  {% if messages %}
+                    {% for message in messages %}
+                      <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                      </div>
+                    {% endfor %}
+                  {% endif %}
+                {% endwith %}
+
+                <div class="card p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h3 class="mb-0 text-dark"><i class="bi bi-star-fill text-warning"></i> Мої навички</h3>
+                        
+                        {% if not session.get('is_admin') %}
+                            <a href="{{ url_for('login') }}" class="btn btn-sm btn-outline-secondary">Вхід для адміна</a>
+                        {% else %}
+                            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-danger">Вийти</a>
+                        {% endif %}
+                    </div>
+
+                    {% if session.get('is_admin') %}
+                    <form method="POST" class="input-group mb-4">
+                        <input type="text" name="skill_name" class="form-control" placeholder="Наприклад: Python, Flask..." required>
+                        <button class="btn btn-add" type="submit">Додати</button>
+                    </form>
+                    {% endif %}
+
+                    <div class="list-group">
+                        {% for skill in skills_list %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center skill-badge mb-2 shadow-sm rounded">
+                            <span class="fw-medium text-secondary">{{ skill }}</span>
+                            
+                            {% if session.get('is_admin') %}
+                            <form method="POST" class="m-0">
+                                <input type="hidden" name="delete_skill" value="{{ skill }}">
+                                <button type="submit" class="btn btn-link text-danger p-0 mt-1"><i class="bi bi-trash"></i></button>
+                            </form>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {% if not skills_list %}
+                        <p class="text-center text-muted">Список навичок поки порожній.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
