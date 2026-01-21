@@ -31,23 +31,29 @@ def is_admin(user_id):
 
 @bot.message_handler(commands=['skills'])
 def show_skills(message):
-    if not is_admin(message.from_user.id): return
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Витягуємо назву та дату (так само, як на сайті)
+    cursor.execute("SELECT name, created_at FROM skills ORDER BY created_at DESC")
+    skills_data = cursor.fetchall()
+    
+    cursor.close()
+    conn.close()
 
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('SELECT name FROM skills')
-        skills = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        
-        if skills:
-            reply = "🛠 Навички з бази PostgreSQL:\n" + "\n".join([f"- {s[0]}" for s in skills])
-        else:
-            reply = "Список порожній."
-        bot.reply_to(message, reply)
-    except Exception as e:
-        bot.reply_to(message, f"❌ Помилка бази: {e}")
+    if not skills_data:
+        bot.send_message(message.chat.id, "📜 Список навичок порожній.")
+        return
+
+    # Формуємо гарний текст повідомлення
+    response = "🚀 *Мої навички:*\n\n"
+    for skill in skills_data:
+        name = skill[0]
+        # Форматуємо дату (якщо вона є)
+        date_str = skill[1].strftime('%d.%m.%Y') if skill[1] else "раніше"
+        response += f"✅ {name} _(додано: {date_str})_\n"
+
+    bot.send_message(message.chat.id, response, parse_mode="Markdown")
 
 @bot.message_handler(commands=['add'])
 def add_skill_via_bot(message):

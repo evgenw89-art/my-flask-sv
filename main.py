@@ -3,7 +3,8 @@ import psycopg2
 import threading
 from flask import Flask, render_template, request, session, redirect, url_for, flash
 from werkzeug.security import generate_password_hash, check_password_hash
-from tgbot import bot 
+from tgbot import bot
+from datetime import datetime 
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'default_secret_123')
@@ -22,6 +23,8 @@ def init_db():
         cursor = conn.cursor()
         cursor.execute('CREATE TABLE IF NOT EXISTS skills (id SERIAL PRIMARY KEY, name TEXT NOT NULL)')
         cursor.execute('CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL)')
+        # Додає колонку created_at, якщо вона ще не існує
+        cursor.execute('ALTER TABLE skills ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
         # Адмін за замовчуванням (пароль 1234)
         hashed_pw = generate_password_hash('1234')
         cursor.execute('INSERT INTO users (username, password) VALUES (%s, %s) ON CONFLICT (username) DO NOTHING', ('admin', hashed_pw))
@@ -43,15 +46,18 @@ def about():
     if request.method == 'POST' and session.get('is_admin'):
         new_skill = request.form.get('skill_name')
         if new_skill:
-            cursor.execute("INSERT INTO skills (name) VALUES (%s)", (new_skill,))
+            now = datetime.now()
+            cursor.execute("INSERT INTO skills (name) VALUES (%s)", (new_skill, now))
             conn.commit()
             
-    cursor.execute("SELECT name FROM skills")
-    skills = [row[0] for row in cursor.fetchall()]
+    cursor.execute("SELECT name, created_at FROM skills ORDER BY created_at DESC")
+    # Тепер fetchall() поверне список кортежів: [('Python', '2024-01-20 12:00'), ...]
+    skills_data = cursor.fetchall()
+    
     cursor.close()
     conn.close()
     
-    return render_template('about.html', name="Євген", phone="0960795995", skills_list=skills)
+    return render_template('about.html', name="Євген", phone="0960795995", skills_list=skills_data)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
