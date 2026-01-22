@@ -9,8 +9,8 @@
     <style>
         body { background: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .hero-section { background: linear-gradient(135deg, #212529 0%, #343a40 100%); color: white; padding: 60px 0; border-bottom: 5px solid #A4C639; }
-        .skill-badge { background: #e9ecef; border-left: 4px solid #A4C639; transition: 0.3s; }
-        .skill-badge:hover { transform: translateX(5px); background: #dee2e6; }
+        .skill-badge { background: #white; border-left: 4px solid #A4C639; transition: 0.3s; border: 1px solid #dee2e6; }
+        .skill-badge:hover { transform: translateX(5px); background: #f1f3f5; }
         .card { border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .btn-add { background-color: #A4C639; border: none; color: black; font-weight: bold; }
         .btn-add:hover { background-color: #8da830; }
@@ -33,10 +33,10 @@
         <div class="row justify-content-center">
             <div class="col-md-8">
                 
-                {% with messages = get_flashed_messages() %}
+                {% with messages = get_flashed_messages(with_categories=true) %}
                   {% if messages %}
-                    {% for message in messages %}
-                      <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    {% for category, message in messages %}
+                      <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show" role="alert">
                         {{ message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                       </div>
@@ -63,33 +63,33 @@
                     {% endif %}
 
                     <div class="list-group">
-                        
-                    <div class="list-group">
-                    {% for skill in skills_list %}
-                        <div class="list-group-item d-flex justify-content-between align-items-center skill-badge mb-2 shadow-sm rounded">
+                        {% for skill in skills_list %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center skill-badge mb-2 shadow-sm rounded p-3">
                             <div>
-                                <span class="fw-medium text-dark">{{ skill[0] }}</span>
-                                <br>
-                                <small class="text-muted" style="font-size: 0.75rem;">
-                                    <i class="bi bi-clock-history"></i> 
+                                <span class="fw-bold text-dark d-block mb-1">{{ skill[0] }}</span>
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar3"></i> 
                                     Додано: {{ skill[1].strftime('%d.%m.%Y %H:%M') if skill[1] else 'Раніше' }}
                                 </small>
                             </div>
-        
-                             {% if session.get('is_admin') %}
-                                <form method="POST" class="m-0">
-                                    <input type="hidden" name="delete_skill" value="{{ skill[0] }}">
-                                    <button type="submit" class="btn btn-link text-danger p-0 mt-1">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                                {% endif %}
-                            </div>
-                            {% endfor %}
+                            
+                            {% if session.get('is_admin') %}
+                            <form method="POST" class="m-0" onsubmit="return confirm('Видалити цю навичку?');">
+                                <input type="hidden" name="delete_skill" value="{{ skill[0] }}">
+                                <button type="submit" class="btn btn-outline-danger btn-sm border-0">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </form>
+                            {% endif %}
                         </div>
+                        {% endfor %}
+                    </div>
 
                     {% if not skills_list %}
-                        <p class="text-center text-muted">Список навичок поки порожній.</p>
+                        <div class="text-center py-4">
+                            <i class="bi bi-clipboard-x display-4 text-muted"></i>
+                            <p class="text-muted mt-2">Список навичок поки порожній.</p>
+                        </div>
                     {% endif %}
                 </div>
             </div>

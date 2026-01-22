@@ -1,38 +1,28 @@
 import os
 import psycopg2
 import threading
+from datetime import datetime
 from flask import Flask, render_template, request, session, redirect, url_for, flash
-from werkzeug.security import generate_password_hash, check_password_hash
-from tgbot import bot
-from datetime import datetime 
+from werkzeug.security import generate_password_hash
+from tgbot import bot 
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'default_secret_123')
-
-# Отримуємо URL бази з Render
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-123')
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 def get_db_connection():
-    # Використовуємо PostgreSQL (як у боті)
     return psycopg2.connect(DATABASE_URL, sslmode='require')
 
 def init_db():
-    """Створюємо таблиці в PostgreSQL"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('CREATE TABLE IF NOT EXISTS skills (id SERIAL PRIMARY KEY, name TEXT NOT NULL)')
-        cursor.execute('CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL)')
-        # Додає колонку created_at, якщо вона ще не існує
-        cursor.execute('ALTER TABLE skills ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
-        # Адмін за замовчуванням (пароль 1234)
-        hashed_pw = generate_password_hash('1234')
-        cursor.execute('INSERT INTO users (username, password) VALUES (%s, %s) ON CONFLICT (username) DO NOTHING', ('admin', hashed_pw))
-        conn.commit()
-        cursor.close()
-        conn.close()
-    except Exception as e:
-        print(f"Помилка ініціалізації БД: {e}")
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('CREATE TABLE IF NOT EXISTS skills (id SERIAL PRIMARY KEY, name TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)')
+    cursor.execute('CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL)')
+    cursor.execute('INSERT INTO users (username, password) VALUES (%s, %s) ON CONFLICT (username) DO NOTHING', 
+                   ('admin', generate_password_hash('1234')))
+    conn.commit()
+    cursor.close()
+    conn.close()
 
 @app.route('/')
 def index():
@@ -42,29 +32,31 @@ def index():
 def about():
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     if request.method == 'POST' and session.get('is_admin'):
         new_skill = request.form.get('skill_name')
+        skill_to_delete = request.form.get('delete_skill')
+
         if new_skill:
-            now = datetime.now()
-            cursor.execute("INSERT INTO skills (name) VALUES (%s)", (new_skill, now))
-            conn.commit()
+            cursor.execute("INSERT INTO skills (name, created_at) VALUES (%s, %s)", (new_skill, datetime.now()))
+            flash('Навичку додано!', 'success')
+        
+        if skill_to_delete:
+            cursor.execute("DELETE FROM skills WHERE name = %s", (skill_to_delete,))
+            flash('Навичку видалено!', 'success')
             
+        conn.commit()
+
     cursor.execute("SELECT name, created_at FROM skills ORDER BY created_at DESC")
-    # Тепер fetchall() поверне список кортежів: [('Python', '2024-01-20 12:00'), ...]
     skills_data = cursor.fetchall()
-    
     cursor.close()
     conn.close()
-    
     return render_template('about.html', name="Євген", phone="0960795995", skills_list=skills_data)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        if username == 'admin' and password == '1234': # Для спрощення
+        if request.form.get('username') == 'admin' and request.form.get('password') == '1234':
             session['is_admin'] = True
             return redirect(url_for('about'))
     return render_template('login.html')
@@ -74,13 +66,16 @@ def logout():
     session.pop('is_admin', None)
     return redirect(url_for('index'))
 
-def run_bot():
-    bot.infinity_polling(none_stop=True)
-
-# Запуск бази та бота перед стартом Flask
-init_db()
-threading.Thread(target=run_bot, daemon=True).start()
-
+# Запобіжник для бота: запускаємо лише в основному процесі Gunicorn
 if __name__ == '__main__':
+    init_db()
+    threading.Thread(target=lambda: bot.infinity_polling(none_stop=True), daemon=True).start()
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+else:
+    # Це спрацює на Render (Gunicorn)
+    init_db()
+    # Щоб уникнути конфлікту 409, бот на Render краще запускати окремо, 
+    # але для навчання лишаємо тут з daemon=True
+    if not os.environ.get("WERKZEUG_RUN_MAIN"): 
+        threading.Thread(target=lambda: bot.infinity_polling(none_stop=True), daemon=True).start()
