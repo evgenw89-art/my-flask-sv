@@ -1,18 +1,59 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Мій супер сайт</title>
-    <style>
-        body { font-family: Arial; background-color: #f4f4f4; text-align: center; padding-top: 50px; }
-        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: inline-block; }
-        h1 { color: #333; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h1>Привіт, це мій професійний шаблон!</h1>
-        <p>Ця сторінка виглядає набагато краще, чи не так?</p>
-        <a href="/about">Про мене</a>
+{% extends "base.html" %}
+
+{% block title %}Головна - Євгеній Петров{% endblock %}
+
+{% block extra_css %}
+<style>
+    .home-hero {
+        padding: 100px 0;
+        background: linear-gradient(rgba(33, 37, 41, 0.8), rgba(33, 37, 41, 0.8)), 
+                    url('https://images.unsplash.com/photo-1498050108023-c5249f4df085?ixlib=rb-1.2.1&auto=format&fit=crop&w=1352&q=80');
+        background-size: cover;
+        background-position: center;
+        color: white;
+        border-radius: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="home-hero text-center shadow-lg mb-5">
+    <div class="container">
+        <h1 class="display-3 fw-bold mb-3">Вітаю на моєму сайті!</h1>
+        <p class="lead mb-4">Я — початківець Python-розробник, і це мій перший повноцінний веб-проєкт на Flask.</p>
+        <hr class="my-4 border-light w-25 mx-auto">
+        <div class="d-grid gap-3 d-sm-flex justify-content-sm-center mt-4">
+            <a href="{{ url_for('about') }}" class="btn btn-success btn-lg px-4 gap-3 fw-bold">
+                <i class="bi bi-briefcase"></i> Мої навички
+            </a>
+            <a href="{{ url_for('contacts') }}" class="btn btn-outline-light btn-lg px-4">
+                <i class="bi bi-envelope"></i> Написати мені
+            </a>
+        </div>
     </div>
-</body>
-</html>
+</div>
+
+<div class="row text-center mt-5">
+    <div class="col-md-4 mb-4">
+        <div class="p-3 border rounded shadow-sm bg-white h-100">
+            <i class="bi bi-rocket-takeoff display-4 text-success mb-3"></i>
+            <h3>Швидкість</h3>
+            <p class="text-muted">Сайт працює на Flask та PostgreSQL, забезпечуючи миттєвий відгук.</p>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="p-3 border rounded shadow-sm bg-white h-100">
+            <i class="bi bi-shield-check display-4 text-success mb-3"></i>
+            <h3>Надійність</h3>
+            <p class="text-muted">Дані надійно зберігаються у хмарній базі даних на Render.</p>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="p-3 border rounded shadow-sm bg-white h-100">
+            <i class="bi bi-telegram display-4 text-success mb-3"></i>
+            <h3>Інтеграція</h3>
+            <p class="text-muted">Зворотний зв'язок реалізовано через Telegram Bot API.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
