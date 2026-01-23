@@ -28,6 +28,10 @@ def init_db():
 def index():
     return render_template('index.html')
 
+@app.route('/contacts')
+def contacts():
+    return render_template('contacts.html', my_phone="096-000-00-00")
+
 @app.route('/about', methods=['GET', 'POST'])
 def about():
     conn = get_db_connection()
@@ -51,7 +55,7 @@ def about():
     skills_data = cursor.fetchall()
     cursor.close()
     conn.close()
-    return render_template('about.html', name="Євген", phone="0960795995", skills_list=skills_data)
+    return render_template('about.html', name="Євгеній Петров", phone="0960795995", skills_list=skills_data)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
