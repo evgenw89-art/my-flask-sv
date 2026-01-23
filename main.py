@@ -28,9 +28,15 @@ def init_db():
 def index():
     return render_template('index.html')
 
-@app.route('/contacts')
+@app.route('/contacts', methods=['GET', 'POST'])
 def contacts():
-    return render_template('contacts.html', my_phone="096-000-00-00")
+    if request.method == 'POST':
+        name = request.form.get('user_name')
+        msg = request.form.get('user_message')
+        # Тут логіка відправки ботом
+        bot.send_message(466172691, f"Нове повідомлення!\nВід: {name}\nТекст: {msg}")
+        flash('Повідомлення надіслано!', 'success')
+    return render_template('contacts.html', my_phone="096-079-59-95")
 
 @app.route('/about', methods=['GET', 'POST'])
 def about():

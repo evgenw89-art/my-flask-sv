@@ -10,6 +10,11 @@
 <body>
     <div class="card">
         <h1>Мої контакти</h1><p>Телефон: {{ my_phone }}</p>
+        <form method="POST">
+            <input type="text" name="user_name" placeholder="Твоє ім'я" required>
+            <textarea name="user_message" placeholder="Повідомлення" required></textarea>
+            <button type="submit">Надіслати</button>
+        </form>
     </div>
 </body>
 </html>
