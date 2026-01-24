@@ -17,10 +17,10 @@ def init_db():
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # 1. Видаляємо стару таблицю користувачів повністю
+    # 1. Силою видаляємо стару таблицю (це очистить старі помилки)
     cur.execute("DROP TABLE IF EXISTS users CASCADE;")
     
-    # 2. Створюємо нову таблицю з правильними назвами
+    # 2. Створюємо нову чисту таблицю
     cur.execute('''
         CREATE TABLE users (
             id SERIAL PRIMARY KEY,
@@ -29,7 +29,12 @@ def init_db():
         );
     ''')
     
-    # 3. Створюємо таблицю навичок (якщо її немає)
+    # 3. Створюємо адміна з паролем SuperSecret2026 (який у тебе на скріншоті)
+    raw_password = os.environ.get('ADMIN_PASSWORD', 'default_password')
+    hashed_pw = generate_password_hash(raw_password)
+    cur.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)", ('admin', hashed_pw))
+    
+    # 4. Перевіряємо таблицю skills (про всяк випадок)
     cur.execute('''
         CREATE TABLE IF NOT EXISTS skills (
             name TEXT PRIMARY KEY, 
@@ -37,15 +42,10 @@ def init_db():
         );
     ''')
     
-    # 4. Одразу створюємо адміна з паролем із налаштувань Render
-    raw_password = os.environ.get('ADMIN_PASSWORD', 'default_password')
-    hashed_pw = generate_password_hash(raw_password)
-    cur.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)", ('admin', hashed_pw))
-    
     conn.commit()
     cur.close()
     conn.close()
-    print("Система: База даних успішно ПЕРЕЗАВАНТАЖЕНА!")
+    print("!!! СИСТЕМА: БАЗА ДАНИХ ОЧИЩЕНА ТА СТВОРЕНА ЗАНОВО !!!")
 
 @app.route('/')
 def index():
