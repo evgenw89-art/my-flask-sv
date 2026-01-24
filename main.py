@@ -3,9 +3,8 @@ import psycopg2
 import threading
 from datetime import datetime
 from flask import Flask, render_template, request, session, redirect, url_for, flash
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from tgbot import bot
-from werkzeug.security import generate_password_hash
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-123')
@@ -34,11 +33,18 @@ def init_db():
     cur.execute("SELECT * FROM users WHERE username = 'admin';")
     admin_exists = cur.fetchone()
     
-    # Крок Г: Якщо адміна немає — створюємо його
+    # Крок Г: Оновлюємо або створюємо адміна
+    raw_password = os.environ.get('ADMIN_PASSWORD', 'default_password')
+    hashed_pw = generate_password_hash(raw_password)
+
     if not admin_exists:
-        hashed_pw = generate_password_hash('твій_пароль_тут') # Заміни на свій!
+        # Якщо немає - створюємо
         cur.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)", ('admin', hashed_pw))
-        print("Система: Таблиця створена, адмін доданий!")
+        print("Система: Адмін створений!")
+    else:
+        # Якщо вже є - просто оновлюємо йому пароль на актуальний
+        cur.execute("UPDATE users SET password_hash = %s WHERE username = %s", (hashed_pw, 'admin'))
+        print("Система: Пароль адміна оновлено!")
     
     conn.commit()
     cur.close()
@@ -86,9 +92,25 @@ def about():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if request.form.get('username') == 'admin' and request.form.get('password') == '1234':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # 1. Шукаємо користувача в базі
+        cur.execute("SELECT password_hash FROM users WHERE username = %s", (username,))
+        user_record = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        # 2. Перевіряємо: чи знайшли ми користувача і чи підходить пароль до хешу
+        if user_record and check_password_hash(user_record[0], password):
             session['is_admin'] = True
+            flash('Ви успішно увійшли!', 'success')
             return redirect(url_for('about'))
+        else:
+            flash('Невірний логін або пароль!', 'danger')
+            
     return render_template('login.html')
 
 @app.route('/logout')
