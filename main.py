@@ -17,7 +17,19 @@ def init_db():
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # 1. Створюємо таблицю навичок (використовуємо 'created_at', щоб збігалося з іншим кодом)
+    # 1. Видаляємо стару таблицю користувачів повністю
+    cur.execute("DROP TABLE IF EXISTS users CASCADE;")
+    
+    # 2. Створюємо нову таблицю з правильними назвами
+    cur.execute('''
+        CREATE TABLE users (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL
+        );
+    ''')
+    
+    # 3. Створюємо таблицю навичок (якщо її немає)
     cur.execute('''
         CREATE TABLE IF NOT EXISTS skills (
             name TEXT PRIMARY KEY, 
@@ -25,38 +37,15 @@ def init_db():
         );
     ''')
     
-    # 2. Створюємо таблицю користувачів
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username VARCHAR(50) UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL
-        );
-    ''')
-    
-    # 3. Перевіряємо адміна
-    cur.execute("SELECT * FROM users WHERE username = 'admin';")
-    admin_exists = cur.fetchone()
-    
+    # 4. Одразу створюємо адміна з паролем із налаштувань Render
     raw_password = os.environ.get('ADMIN_PASSWORD', 'default_password')
     hashed_pw = generate_password_hash(raw_password)
-
-    if not admin_exists:
-        cur.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)", ('admin', hashed_pw))
-        print("Система: Адмін створений!")
-    else:
-        # ТУТ ХИТРІСТЬ: ми використовуємо TRY/EXCEPT. 
-        # Якщо колонки ще немає, ми не впадемо, а просто проігноруємо це, 
-        # поки ти не видалиш таблицю вручну або через DROP.
-        try:
-            cur.execute("UPDATE users SET password_hash = %s WHERE username = %s", (hashed_pw, 'admin'))
-            print("Система: Пароль адміна оновлено!")
-        except Exception as e:
-            print(f"Система: Не вдалося оновити (можливо, стара структура): {e}")
+    cur.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)", ('admin', hashed_pw))
     
     conn.commit()
     cur.close()
     conn.close()
+    print("Система: База даних успішно ПЕРЕЗАВАНТАЖЕНА!")
 
 @app.route('/')
 def index():
@@ -128,13 +117,13 @@ def logout():
 
 # Запобіжник для бота: запускаємо лише в основному процесі Gunicorn
 if __name__ == '__main__':
-    #init_db()
+    init_db()
     threading.Thread(target=lambda: bot.infinity_polling(none_stop=True), daemon=True).start()
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
 else:
     # Це спрацює на Render (Gunicorn)
-    #init_db()
+    init_db()
     # Щоб уникнути конфлікту 409, бот на Render краще запускати окремо, 
     # але для навчання лишаємо тут з daemon=True
     if not os.environ.get("WERKZEUG_RUN_MAIN"): 
