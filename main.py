@@ -4,7 +4,8 @@ import threading
 from datetime import datetime
 from flask import Flask, render_template, request, session, redirect, url_for, flash
 from werkzeug.security import generate_password_hash
-from tgbot import bot 
+from tgbot import bot
+from werkzeug.security import generate_password_hash
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-123')
@@ -15,13 +16,32 @@ def get_db_connection():
 
 def init_db():
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('CREATE TABLE IF NOT EXISTS skills (id SERIAL PRIMARY KEY, name TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)')
-    cursor.execute('CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL)')
-    cursor.execute('INSERT INTO users (username, password) VALUES (%s, %s) ON CONFLICT (username) DO NOTHING', 
-                   ('admin', generate_password_hash('1234')))
+    cur = conn.cursor()
+    
+    # Крок А: Створюємо таблицю навичок (вона у тебе вже є, просто перевіряємо)
+    cur.execute('CREATE TABLE IF NOT EXISTS skills (name TEXT PRIMARY KEY, added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);')
+    
+    # Крок Б: Створюємо нову таблицю для користувачів
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL
+        );
+    ''')
+    
+    # Крок В: Перевіряємо, чи є вже адмін у базі
+    cur.execute("SELECT * FROM users WHERE username = 'admin';")
+    admin_exists = cur.fetchone()
+    
+    # Крок Г: Якщо адміна немає — створюємо його
+    if not admin_exists:
+        hashed_pw = generate_password_hash('твій_пароль_тут') # Заміни на свій!
+        cur.execute("INSERT INTO users (username, password_hash) VALUES (%s, %s)", ('admin', hashed_pw))
+        print("Система: Таблиця створена, адмін доданий!")
+    
     conn.commit()
-    cursor.close()
+    cur.close()
     conn.close()
 
 @app.route('/')
