@@ -1,10 +1,10 @@
-import os
-import psycopg2
-import threading
-from datetime import datetime
-from flask import Flask, render_template, request, session, redirect, url_for, flash
-from werkzeug.security import generate_password_hash, check_password_hash
-from tgbot import bot
+import os #задяки чому програма спілкується з ос (для зв'язку програми з Render)
+import psycopg2 #база для роботи PostgreSQL
+import threading # для багатозадачності (показує сайт і чекає повідомлення в Телеграмі)
+from datetime import datetime # Для додавання дати створення
+from flask import Flask, render_template, request, session, redirect, url_for, flash #скелет сайту
+from werkzeug.security import generate_password_hash, check_password_hash #для прихованого паролю
+from tgbot import bot #телеграм бот
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-123')
@@ -14,11 +14,11 @@ def get_db_connection():
     return psycopg2.connect(DATABASE_URL, sslmode='require')
 
 def init_db():
-    conn = get_db_connection()
-    cur = conn.cursor()
+    conn = get_db_connection() # Відкриваємо з'єднання
+    cur = conn.cursor() # "беремо ручку", щоб писати в базу
     
     # 1. Силою видаляємо стару таблицю (це очистить старі помилки)
-    cur.execute("DROP TABLE IF EXISTS users CASCADE;")
+    #cur.execute("DROP TABLE IF EXISTS users CASCADE;")
     
     # 2. Створюємо нову чисту таблицю
     cur.execute('''
@@ -38,13 +38,14 @@ def init_db():
     cur.execute('''
         CREATE TABLE IF NOT EXISTS skills (
             name TEXT PRIMARY KEY, 
+            level TEXT, 
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     ''')
     
-    conn.commit()
-    cur.close()
-    conn.close()
+    conn.commit() # Натискаємо "Зберегти"
+    cur.close() # Кладемо ручку
+    conn.close() # Кладемо слухавку
     print("!!! СИСТЕМА: БАЗА ДАНИХ ОЧИЩЕНА ТА СТВОРЕНА ЗАНОВО !!!")
 
 @app.route('/')
@@ -66,12 +67,17 @@ def about():
     conn = get_db_connection()
     cursor = conn.cursor()
 
+    user_status = "Гість"
+
+    if session.get('is_admin'):
+        user_status = "Адміністратор (Євгеній)"
+    
     if request.method == 'POST' and session.get('is_admin'):
         new_skill = request.form.get('skill_name')
         skill_to_delete = request.form.get('delete_skill')
 
         if new_skill:
-            cursor.execute("INSERT INTO skills (name, created_at) VALUES (%s, %s)", (new_skill, datetime.now()))
+            cursor.execute("INSERT INTO skills (name, level, created_at) VALUES (%s, %s, %s)", (new_skill, skill_level, datetime.now()))
             flash('Навичку додано!', 'success')
         
         if skill_to_delete:
@@ -80,11 +86,11 @@ def about():
             
         conn.commit()
 
-    cursor.execute("SELECT name, created_at FROM skills ORDER BY created_at DESC")
-    skills_data = cursor.fetchall()
+    cursor.execute("SELECT name, created_at FROM skills ORDER BY created_at DESC") #"Вибери дані з цих колонок у таблиці skills, Відсортуй їх так, щоб найновіші були зверху"
+    skills_data = cursor.fetchall() # Забери все, що знайшов
     cursor.close()
     conn.close()
-    return render_template('about.html', name="Євгеній Петров", phone="0960795995", skills_list=skills_data)
+    return render_template('about.html', status=user_status, skills_list=skills_data)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -116,15 +122,18 @@ def logout():
     return redirect(url_for('index'))
 
 # Запобіжник для бота: запускаємо лише в основному процесі Gunicorn
+# КІНЕЦЬ ФАЙЛУ main.py
+
 if __name__ == '__main__':
+    # Цей блок працює, коли ти запускаєш код сам на комп'ютері
     init_db()
     threading.Thread(target=lambda: bot.infinity_polling(none_stop=True), daemon=True).start()
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
 else:
-    # Це спрацює на Render (Gunicorn)
+    # Цей блок працює на Render (Gunicorn)
     init_db()
-    # Щоб уникнути конфлікту 409, бот на Render краще запускати окремо, 
-    # але для навчання лишаємо тут з daemon=True
+    # Запускаємо бота ТІЛЬКИ ТУТ і тільки один раз
     if not os.environ.get("WERKZEUG_RUN_MAIN"): 
+        print("Запуск Telegram бота...")
         threading.Thread(target=lambda: bot.infinity_polling(none_stop=True), daemon=True).start()

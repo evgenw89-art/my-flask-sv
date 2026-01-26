@@ -10,7 +10,11 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 CHANNEL_ID = '-1002919228474'
 ADMIN_ID = 466172691  
 
-bot = telebot.TeleBot(BOT_TOKEN)
+if BOT_TOKEN is None:
+    print("ПОМИЛКА: Змінна BOT_TOKEN не знайдена в налаштуваннях Render!")
+    bot = None
+else:
+    bot = telebot.TeleBot(BOT_TOKEN)
 
 # --- Категорії ---
 CATEGORIES = {
